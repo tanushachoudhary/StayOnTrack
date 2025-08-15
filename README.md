@@ -64,22 +64,6 @@ Designed for both **Chrome** (Manifest V3) and **Firefox** (Manifest V2) for max
 
 ---
 
-## 🚀 Publishing
-
-### **Chrome Web Store**
-
-1. Go to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
-2. Upload a `.zip` of your Chrome version (with MV3 manifest).
-3. Provide screenshots, description, and submit for review.
-
-### **Firefox Add-ons (AMO)**
-
-1. Go to the [Firefox Add-ons Developer Hub](https://addons.mozilla.org/developers/).
-2. Upload a `.zip` of your Firefox version (with MV2 manifest).
-3. Fill in details and request review.
-
----
-
 ## 📜 License
 
 This project is licensed under the MIT License — feel free to modify and share.
