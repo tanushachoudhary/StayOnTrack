@@ -2,8 +2,12 @@
 
 **StayOnTrack** is a productivity-focused browser extension that helps you stay focused by blocking distracting websites and showing a friendly reminder page instead.  
 Designed for both **Chrome** (Manifest V3) and **Firefox** (Manifest V2) for maximum compatibility.
+<img width="1893" height="852" alt="Screenshot 2025-08-15 150153" src="https://github.com/user-attachments/assets/1efdfb63-f354-4c45-8816-1ced914a2c5c" />
 
----
+<img width="1895" height="652" alt="Screenshot 2025-08-15 150525" src="https://github.com/user-attachments/assets/9cc3132d-b2bf-4148-af0e-0bd85d4db16b" />
+
+<img width="1918" height="827" alt="Screenshot 2025-08-15 152137" src="https://github.com/user-attachments/assets/f32cb739-3061-44d1-acca-08e399c57cc5" />
+
 
 ## 📌 Features
 
