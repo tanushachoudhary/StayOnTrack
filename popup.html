@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>StayOnTrack</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>StayOnTrack</h1>
+
+      <div id="phase" class="phase idle">Idle</div>
+
+      <div class="time-container">
+        <svg class="progress-ring">
+          <circle class="bg" cx="110" cy="110" r="110" />
+          <circle class="progress" cx="110" cy="110" r="110" />
+        </svg>
+        <div id="time" class="time">25:00</div>
+      </div>
+
+      <div class="controls idle" id="controls">
+        <button id="startFocus">🎯 Start Focus</button>
+        <button id="startBreak">☕ Start Break</button>
+        <button id="pause">⏸ Pause</button>
+        <button id="resume">▶️ Resume</button>
+        <button id="reset" class="ghost">🔄 Reset</button>
+      </div>
+
+      <div class="stats">Completed Pomodoros: <span id="pomos">0</span></div>
+
+      <a class="options-link" href="#" id="openOptions"> ⚙️ Settings </a>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

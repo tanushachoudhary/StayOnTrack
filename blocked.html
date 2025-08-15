@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Stay Focused</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          Arial;
+        background: #0b1220;
+        color: #fff;
+        font-size: 16px;
+      }
+      .card {
+        text-align: center;
+        padding: 28px;
+        border-radius: 16px;
+        background: #111827;
+        width: min(520px, 92vw);
+      }
+      h1 {
+        margin: 0 0 8px;
+      }
+      p {
+        opacity: 0.85;
+      }
+      a {
+        color: #93c5fd;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Stay Focused 🔒</h1>
+      <p>This site is blocked during your focus session.</p>
+      <p>
+        Open the <a href="#" id="open">StayOnTrack popup</a> to pause or take a
+        break.
+      </p>
+    </div>
+    <script src="blocked.js"></script>
+  </body>
+</html>

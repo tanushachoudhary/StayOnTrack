@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>StayOnTrack Settings</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>StayOnTrack Settings</h1>
+
+      <section>
+        <h2>Timer Configuration</h2>
+        <div class="timer-inputs">
+          <label>
+            Focus Duration
+            <input
+              type="number"
+              id="focusMinutes"
+              min="1"
+              max="180"
+              placeholder="25"
+            />
+          </label>
+          <label>
+            Break Duration
+            <input
+              type="number"
+              id="breakMinutes"
+              min="1"
+              max="60"
+              placeholder="5"
+            />
+          </label>
+        </div>
+        <button id="saveTimer" class="save-button">Save Timer Settings</button>
+      </section>
+
+      <section>
+        <h2>Website Blocklist</h2>
+        <div class="add">
+          <label style="margin: 0; flex: 1">
+            Add Domain
+            <input
+              id="domainInput"
+              placeholder="e.g. youtube.com, twitter.com"
+            />
+          </label>
+          <button id="addDomain">Add Domain</button>
+        </div>
+        <ul id="list">
+          <div class="empty-state">No blocked domains yet. Add some above!</div>
+        </ul>
+        <button id="saveBlocklist" class="save-button">Save Blocklist</button>
+        <p class="hint">
+          <strong>Tip:</strong> Enter only the domain name without protocol or
+          paths. For example, use <code>youtube.com</code> instead of
+          <code>https://youtube.com/watch</code>
+        </p>
+      </section>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>
