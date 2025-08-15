@@ -7,7 +7,6 @@ Designed for both **Chrome** (Manifest V3) and **Firefox** (Manifest V2) for max
 
 <img width="1897" height="865" alt="image" src="https://github.com/user-attachments/assets/3aba9fcc-2cde-4eac-89bc-de823b2f125d" />
 
-
 ## 📌 Features
 
 - Block specific websites or patterns you define.
