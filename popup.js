@@ -106,9 +106,8 @@ document.getElementById("reset").addEventListener("click", () => {
   setState("idle", 25);
 });
 
-document.getElementById("openOptions").addEventListener("click", (e) => {
-  e.preventDefault();
-  alert("Settings would open here");
+document.getElementById("openOptions").addEventListener("click", () => {
+  chrome.runtime.openOptionsPage();
 });
 
 // Initialize
