@@ -1,277 +1,353 @@
-// --- Keys in storage ---
-const KEY_SETTINGS = "settings"; // {focusMinutes, breakMinutes}
-const KEY_BLOCKLIST = "blocklist"; // array of domains e.g. ["youtube.com","instagram.com"]
-const KEY_STATE = "state"; // {phase, endTime, paused, pomodorosCompleted, activeRuleIds}
+// Background script for Pomodoro Timer Extension
 
-const RULE_BASE_ID = 1000;
+class PomodoroTimer {
+    constructor() {
+        this.state = {
+            isRunning: false,
+            isPaused: false,
+            currentSession: 'focus', // 'focus', 'shortBreak', 'longBreak'
+            timeRemaining: 25 * 60, // in seconds
+            totalTime: 25 * 60,
+            sessionsCompleted: 0,
+            isBlocking: false
+        };
+        
+        this.settings = {
+            focusTime: 25,
+            shortBreakTime: 5,
+            longBreakTime: 15,
+            blockedSites: []
+        };
 
-// Default values
-const defaultSettings = { focusMinutes: 25, breakMinutes: 5 };
-const defaultState = {
-  phase: "idle", // 'idle' | 'focus' | 'break' | 'paused'
-  endTime: null, // timestamp (ms)
-  paused: false,
-  remainingMs: null,
-  pomodorosCompleted: 0,
-  activeRuleIds: [],
-};
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === "install") {
-    chrome.runtime.openOptionsPage();
-  }
-});
-
-// Initialize storage on install
-chrome.runtime.onInstalled.addListener(async () => {
-  const data = await chrome.storage.sync.get([
-    KEY_SETTINGS,
-    KEY_BLOCKLIST,
-    KEY_STATE,
-  ]);
-  if (!data[KEY_SETTINGS])
-    await chrome.storage.sync.set({ [KEY_SETTINGS]: defaultSettings });
-  if (!data[KEY_BLOCKLIST])
-    await chrome.storage.sync.set({ [KEY_BLOCKLIST]: [] });
-  if (!data[KEY_STATE])
-    await chrome.storage.local.set({ [KEY_STATE]: defaultState });
-});
-
-// --- Helper: read/write state/settings ---
-async function getSettings() {
-  const { [KEY_SETTINGS]: s } = await chrome.storage.sync.get(KEY_SETTINGS);
-  return { ...defaultSettings, ...(s || {}) };
-}
-async function setSettings(settings) {
-  await chrome.storage.sync.set({ [KEY_SETTINGS]: settings });
-}
-async function getBlocklist() {
-  const { [KEY_BLOCKLIST]: b } = await chrome.storage.sync.get(KEY_BLOCKLIST);
-  return b || [];
-}
-async function setBlocklist(blocklist) {
-  await chrome.storage.sync.set({ [KEY_BLOCKLIST]: blocklist });
-}
-async function getState() {
-  const { [KEY_STATE]: st } = await chrome.storage.local.get(KEY_STATE);
-  return { ...defaultState, ...(st || {}) };
-}
-async function setState(patch) {
-  const cur = await getState();
-  const next = { ...cur, ...patch };
-  await chrome.storage.local.set({ [KEY_STATE]: next });
-  // notify UIs
-  chrome.runtime
-    .sendMessage({ type: "state:update", state: next })
-    .catch(() => {});
-  return next;
-}
-
-// --- DNR: apply / clear rules ---
-async function applyBlockRules(domains) {
-  const ids = domains.map((_, i) => RULE_BASE_ID + i);
-  const addRules = domains.map((domain, i) => ({
-    id: RULE_BASE_ID + i,
-    priority: 1,
-    action: {
-      type: "redirect",
-      redirect: { extensionPath: "/blocked.html" },
-    },
-    condition: {
-      urlFilter: `||${domain}`,
-      resourceTypes: [
-        "main_frame",
-        "sub_frame",
-        "xmlhttprequest",
-        "script",
-        "image",
-        "font",
-        "media",
-        "other",
-      ],
-    },
-  }));
-
-  // Remove any existing rules in our ID range before adding
-  const curState = await getState();
-  const toRemove = curState.activeRuleIds || [];
-
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: toRemove,
-    addRules,
-  });
-
-  await setState({ activeRuleIds: ids });
-}
-
-async function clearBlockRules() {
-  const { activeRuleIds } = await getState();
-  if ((activeRuleIds || []).length) {
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: activeRuleIds,
-      addRules: [],
-    });
-    await setState({ activeRuleIds: [] });
-  }
-}
-
-// --- Timer control ---
-async function startFocus() {
-  const { focusMinutes } = await getSettings();
-  const endTime = Date.now() + focusMinutes * 60 * 1000;
-  const blocklist = await getBlocklist();
-  await applyBlockRules(blocklist);
-  await setState({ phase: "focus", endTime, paused: false, remainingMs: null });
-  await scheduleEndAlarm(endTime);
-  notify("Focus started", `Stay on task for ${focusMinutes} minutes!`);
-}
-
-async function startBreak() {
-  const { breakMinutes } = await getSettings();
-  const endTime = Date.now() + breakMinutes * 60 * 1000;
-  await clearBlockRules();
-  const st = await getState();
-  // Count a pomodoro completed when transitioning from focus -> break
-  const add = st.phase === "focus" ? 1 : 0;
-  await setState({
-    phase: "break",
-    endTime,
-    paused: false,
-    remainingMs: null,
-    pomodorosCompleted: st.pomodorosCompleted + add,
-  });
-  await scheduleEndAlarm(endTime);
-  notify("Break time", `Relax for ${breakMinutes} minutes.`);
-}
-
-async function resetTimer() {
-  await clearBlockRules();
-  await clearEndAlarm();
-  await setState({ ...defaultState });
-}
-
-async function pauseTimer() {
-  const st = await getState();
-  if (st.phase === "focus" || st.phase === "break") {
-    const remainingMs = Math.max(0, (st.endTime || 0) - Date.now());
-    await clearEndAlarm();
-    await setState({
-      paused: true,
-      phase: "paused",
-      remainingMs,
-      endTime: null,
-    });
-    await clearBlockRules(); // unblock while paused
-  }
-}
-
-async function resumeTimer() {
-  const st = await getState();
-  if (st.phase === "paused" && st.remainingMs != null) {
-    const endTime = Date.now() + st.remainingMs;
-    await setState({ endTime, paused: false });
-    // Re-apply rules only if we paused from focus
-    // We can't know previous phase for sure; heuristic: if rules empty -> assume focus
-    const toReblock = (st.activeRuleIds || []).length === 0;
-    if (toReblock) {
-      const blocklist = await getBlocklist();
-      await applyBlockRules(blocklist);
+        this.init();
     }
-    await scheduleEndAlarm(endTime);
-  }
-}
 
-async function switchPhase() {
-  const st = await getState();
-  if (st.phase === "focus") return startBreak();
-  return startFocus();
-}
+    async init() {
+        // Load saved state and settings
+        await this.loadState();
+        await this.loadSettings();
+        
+        // Set up alarm listener
+        chrome.alarms.onAlarm.addListener((alarm) => {
+            if (alarm.name === 'pomodoroTimer') {
+                this.tick();
+            }
+        });
 
-// --- Alarms ---
-const ALARM_NAME = "phaseEnd";
-async function scheduleEndAlarm(endTimeMs) {
-  await chrome.alarms.clear(ALARM_NAME);
-  await chrome.alarms.create(ALARM_NAME, { when: endTimeMs });
-}
-async function clearEndAlarm() {
-  await chrome.alarms.clear(ALARM_NAME);
-}
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name !== ALARM_NAME) return;
-  const st = await getState();
-  if (!st.endTime || Date.now() < st.endTime - 500) return;
-  if (st.phase === "focus") {
-    notify("Focus complete", "Great job! Time for a break.");
-    await startBreak();
-  } else if (st.phase === "break") {
-    notify("Break over", "Ready for the next focus session?");
-    await startFocus();
-  }
-});
+        // Set up message listener
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            this.handleMessage(message, sender, sendResponse);
+            return true;
+        });
 
-// --- Notifications ---
-function notify(title, message) {
-  chrome.notifications.create(
-    {
-      type: "basic",
-      iconUrl: "icons/16.png",
-      title,
-      message,
-    },
-    () => {}
-  );
-}
-
-// --- Messages from popup/options ---
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  (async () => {
-    switch (msg?.type) {
-      case "state:get":
-        sendResponse(await getState());
-        break;
-      case "timer:startFocus":
-        await startFocus();
-        sendResponse(true);
-        break;
-      case "timer:startBreak":
-        await startBreak();
-        sendResponse(true);
-        break;
-      case "timer:pause":
-        await pauseTimer();
-        sendResponse(true);
-        break;
-      case "timer:resume":
-        await resumeTimer();
-        sendResponse(true);
-        break;
-      case "timer:reset":
-        await resetTimer();
-        sendResponse(true);
-        break;
-      case "timer:switch":
-        await switchPhase();
-        sendResponse(true);
-        break;
-      case "settings:get":
-        sendResponse(await getSettings());
-        break;
-      case "settings:set":
-        await setSettings(msg.settings);
-        sendResponse(true);
-        break;
-      case "blocklist:get":
-        sendResponse(await getBlocklist());
-        break;
-      case "blocklist:set":
-        await setBlocklist(msg.blocklist);
-        // If we are in focus, update rules immediately
-        const st = await getState();
-        if (st.phase === "focus") await applyBlockRules(msg.blocklist || []);
-        sendResponse(true);
-        break;
-      default:
-        sendResponse(false);
+        // Initialize blocking rules
+        await this.updateBlockingRules();
     }
-  })();
-  return true; // keep channel open for async
-});
+
+    async loadState() {
+        const result = await chrome.storage.local.get(['pomodoroState']);
+        if (result.pomodoroState) {
+            this.state = { ...this.state, ...result.pomodoroState };
+        }
+    }
+
+    async saveState() {
+        await chrome.storage.local.set({ pomodoroState: this.state });
+    }
+
+    async loadSettings() {
+        const result = await chrome.storage.sync.get(['pomodoroSettings']);
+        if (result.pomodoroSettings) {
+            this.settings = { ...this.settings, ...result.pomodoroSettings };
+        }
+    }
+
+    async saveSettings() {
+        await chrome.storage.sync.set({ pomodoroSettings: this.settings });
+        await this.updateBlockingRules();
+    }
+
+    async handleMessage(message, sender, sendResponse) {
+        switch (message.type) {
+            case 'GET_STATE':
+                sendResponse({ 
+                    state: this.state, 
+                    settings: this.settings,
+                    stats: await this.getStats()
+                });
+                break;
+            
+            case 'START_TIMER':
+                await this.startTimer();
+                sendResponse({ success: true });
+                break;
+            
+            case 'PAUSE_TIMER':
+                await this.pauseTimer();
+                sendResponse({ success: true });
+                break;
+            
+            case 'RESET_TIMER':
+                await this.resetTimer();
+                sendResponse({ success: true });
+                break;
+            
+            case 'SKIP_SESSION':
+                await this.skipSession();
+                sendResponse({ success: true });
+                break;
+            
+            case 'UPDATE_SETTINGS':
+                this.settings = { ...this.settings, ...message.settings };
+                await this.saveSettings();
+                sendResponse({ success: true });
+                break;
+            
+            case 'ADD_BLOCKED_SITE':
+                await this.addBlockedSite(message.site);
+                sendResponse({ success: true });
+                break;
+            
+            case 'REMOVE_BLOCKED_SITE':
+                await this.removeBlockedSite(message.site);
+                sendResponse({ success: true });
+                break;
+        }
+    }
+
+    async startTimer() {
+        if (this.state.isPaused) {
+            this.state.isPaused = false;
+        } else {
+            this.resetCurrentSession();
+        }
+        
+        this.state.isRunning = true;
+        
+        // Update blocking state
+        this.state.isBlocking = this.state.currentSession === 'focus';
+        
+        // Start the alarm
+        chrome.alarms.create('pomodoroTimer', { delayInMinutes: 0, periodInMinutes: 1/60 });
+        
+        await this.saveState();
+        await this.updateIcon();
+        await this.updateBlockingRules();
+        this.notifyPopups();
+    }
+
+    async pauseTimer() {
+        this.state.isRunning = false;
+        this.state.isPaused = true;
+        
+        chrome.alarms.clear('pomodoroTimer');
+        
+        await this.saveState();
+        await this.updateIcon();
+        this.notifyPopups();
+    }
+
+    async resetTimer() {
+        this.state.isRunning = false;
+        this.state.isPaused = false;
+        this.state.isBlocking = false;
+        
+        this.resetCurrentSession();
+        
+        chrome.alarms.clear('pomodoroTimer');
+        
+        await this.saveState();
+        await this.updateIcon();
+        await this.updateBlockingRules();
+        this.notifyPopups();
+    }
+
+    async skipSession() {
+        await this.completeSession();
+    }
+
+    resetCurrentSession() {
+        const sessionTimes = {
+            focus: this.settings.focusTime * 60,
+            shortBreak: this.settings.shortBreakTime * 60,
+            longBreak: this.settings.longBreakTime * 60
+        };
+        
+        this.state.timeRemaining = sessionTimes[this.state.currentSession];
+        this.state.totalTime = sessionTimes[this.state.currentSession];
+    }
+
+    async tick() {
+        if (!this.state.isRunning) return;
+        
+        this.state.timeRemaining--;
+        
+        if (this.state.timeRemaining <= 0) {
+            await this.completeSession();
+        }
+        
+        await this.saveState();
+        this.notifyPopups();
+    }
+
+    async completeSession() {
+        // Show notification
+        this.showNotification();
+        
+        // Update session count and switch session type
+        if (this.state.currentSession === 'focus') {
+            this.state.sessionsCompleted++;
+            await this.updateStats();
+            
+            // Determine next break type (long break every 4 sessions)
+            if (this.state.sessionsCompleted % 4 === 0) {
+                this.state.currentSession = 'longBreak';
+            } else {
+                this.state.currentSession = 'shortBreak';
+            }
+        } else {
+            this.state.currentSession = 'focus';
+        }
+        
+        // Reset timer for next session
+        this.resetCurrentSession();
+        
+        // Stop timer and update blocking
+        this.state.isRunning = false;
+        this.state.isPaused = false;
+        this.state.isBlocking = false;
+        
+        chrome.alarms.clear('pomodoroTimer');
+        
+        await this.saveState();
+        await this.updateIcon();
+        await this.updateBlockingRules();
+        this.notifyPopups();
+    }
+
+    showNotification() {
+        const sessionNames = {
+            focus: 'Focus Session',
+            shortBreak: 'Short Break',
+            longBreak: 'Long Break'
+        };
+        
+        const nextSession = this.state.currentSession === 'focus' 
+            ? (this.state.sessionsCompleted % 4 === 3 ? 'Long Break' : 'Short Break')
+            : 'Focus Session';
+            
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icons/icon48.png',
+            title: `${sessionNames[this.state.currentSession]} Complete!`,
+            message: `Time for a ${nextSession.toLowerCase()}!`
+        });
+    }
+
+    async updateStats() {
+        const today = new Date().toDateString();
+        const stats = await chrome.storage.local.get(['pomodoroStats']) || {};
+        const todayStats = stats.pomodoroStats?.[today] || { sessions: 0, focusTime: 0 };
+        
+        todayStats.sessions++;
+        todayStats.focusTime += this.settings.focusTime;
+        
+        const newStats = {
+            ...stats.pomodoroStats,
+            [today]: todayStats
+        };
+        
+        await chrome.storage.local.set({ pomodoroStats: newStats });
+    }
+
+    async getStats() {
+        const today = new Date().toDateString();
+        const stats = await chrome.storage.local.get(['pomodoroStats']);
+        const todayStats = stats.pomodoroStats?.[today] || { sessions: 0, focusTime: 0 };
+        
+        return {
+            sessionsToday: todayStats.sessions,
+            totalFocusTime: todayStats.focusTime
+        };
+    }
+
+    async addBlockedSite(site) {
+        const cleanSite = site.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
+        if (!this.settings.blockedSites.includes(cleanSite)) {
+            this.settings.blockedSites.push(cleanSite);
+            await this.saveSettings();
+        }
+    }
+
+    async removeBlockedSite(site) {
+        this.settings.blockedSites = this.settings.blockedSites.filter(s => s !== site);
+        await this.saveSettings();
+    }
+
+    async updateBlockingRules() {
+        // Clear existing rules
+        const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
+        const ruleIds = existingRules.map(rule => rule.id);
+        
+        if (ruleIds.length > 0) {
+            await chrome.declarativeNetRequest.updateDynamicRules({
+                removeRuleIds: ruleIds
+            });
+        }
+        
+        // Add new blocking rules if timer is running and in focus mode
+        if (this.state.isBlocking && this.settings.blockedSites.length > 0) {
+            const rules = this.settings.blockedSites.map((site, index) => ({
+                id: index + 1,
+                priority: 1,
+                action: {
+                    type: 'redirect',
+                    redirect: {
+                        url: chrome.runtime.getURL('blocked.html')
+                    }
+                },
+                condition: {
+                    urlFilter: `*://*.${site}/*`,
+                    resourceTypes: ['main_frame']
+                }
+            }));
+            
+            await chrome.declarativeNetRequest.updateDynamicRules({
+                addRules: rules
+            });
+        }
+    }
+
+    async updateIcon() {
+        const iconPath = this.state.isRunning 
+            ? (this.state.currentSession === 'focus' ? 'icons/icon_active.png' : 'icons/icon_break.png')
+            : 'icons/icon48.png';
+            
+        chrome.action.setIcon({ path: iconPath });
+        
+        // Update badge with time remaining
+        if (this.state.isRunning || this.state.isPaused) {
+            const minutes = Math.floor(this.state.timeRemaining / 60);
+            const seconds = this.state.timeRemaining % 60;
+            chrome.action.setBadgeText({ 
+                text: `${minutes}:${seconds.toString().padStart(2, '0')}` 
+            });
+            chrome.action.setBadgeBackgroundColor({ color: '#667eea' });
+        } else {
+            chrome.action.setBadgeText({ text: '' });
+        }
+    }
+
+    notifyPopups() {
+        chrome.runtime.sendMessage({
+            type: 'STATE_UPDATE',
+            state: this.state,
+            settings: this.settings
+        }).catch(() => {
+            // Popup might not be open, ignore error
+        });
+    }
+}
+
+// Initialize the timer when the extension starts
+const timer = new PomodoroTimer();

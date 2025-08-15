@@ -2,48 +2,237 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Stay Focused</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Focus Time - Site Blocked</title>
     <style>
       body {
-        margin: 0;
+        margin-top: 60px;
+        margin-bottom: 60px;
+        padding: 0;
         height: 100vh;
-        display: grid;
-        place-items: center;
-        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-          Arial;
-        background: #0b1220;
-        color: #fff;
-        font-size: 16px;
+        background: linear-gradient(120deg, #00f260 0%, #0575e6 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        color: white;
+        font-size: 15px;
       }
-      .card {
+
+      .container {
         text-align: center;
-        padding: 28px;
-        border-radius: 16px;
-        background: #111827;
-        width: min(520px, 92vw);
+        padding: 40px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        max-width: 500px;
+        margin: 100px;
       }
+
+      .tomato-icon {
+        font-size: 4em;
+        margin-bottom: 20px;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
       h1 {
-        margin: 0 0 8px;
+        font-size: 2.5em;
+        margin: 0 0 20px 0;
+        font-weight: bold;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
       }
-      p {
-        opacity: 0.85;
+
+      .message {
+        font-size: 1.2em;
+        line-height: 1.6;
+        margin: 0 0 30px 0;
+        opacity: 0.9;
       }
-      a {
-        color: #93c5fd;
-        text-decoration: none;
+
+      .quote {
+        font-style: italic;
+        font-size: 1em;
+        margin: 20px 0;
+        opacity: 0.8;
+        border-left: 3px solid rgba(255, 255, 255, 0.5);
+        padding-left: 20px;
+        text-align: left;
+      }
+
+      .stats {
+        margin: 20px 0;
+        font-size: 1.1em;
+        opacity: 0.9;
+      }
+
+      .tips {
+        margin-top: 30px;
+        text-align: left;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 20px;
+        border-radius: 10px;
+      }
+
+      .tips h3 {
+        margin-top: 0;
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .tips ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      .tips li {
+        margin: 10px 0;
+        padding-left: 20px;
+        position: relative;
+      }
+
+      .tips li:before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .focus-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin: 20px 0;
+      }
+
+      .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+      }
+
+      .stat-number {
+        font-size: 1.5em;
+        font-weight: bold;
+        display: block;
+      }
+
+      .stat-label {
+        font-size: 0.9em;
+        opacity: 0.8;
       }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h1>Stay Focused 🔒</h1>
-      <p>This site is blocked during your focus session.</p>
-      <p>
-        Open the <a href="#" id="open">StayOnTrack popup</a> to pause or take a
-        break.
+    <div class="container">
+      <div class="tomato-icon">🍅</div>
+      <h1>Focus Time! 🎯</h1>
+      <p class="message">
+        This site is blocked during your Pomodoro focus session. Stay focused
+        and get back to work!
       </p>
+
+      <div class="focus-stats" id="stats">
+        <div class="stat-item">
+          <span class="stat-number" id="sessionsToday">0</span>
+          <span class="stat-label">Sessions Today</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number" id="totalTime">0h 0m</span>
+          <span class="stat-label">Focus Time</span>
+        </div>
+      </div>
+
+      <p class="quote" id="motivationalQuote"></p>
+
+      <div class="tips">
+        <h3>While you wait, try:</h3>
+        <ul>
+          <li>Take deep breaths and center yourself</li>
+          <li>Jot down any distracting thoughts for later</li>
+          <li>Stretch or do some light exercise</li>
+          <li>Drink water and stay hydrated</li>
+          <li>Review your current task objectives</li>
+          <li>Practice mindfulness or meditation</li>
+        </ul>
+      </div>
     </div>
-    <script src="blocked.js"></script>
+
+    <script>
+      // Motivational quotes
+      const quotes = [
+        "Success is the sum of small efforts repeated day in and day out. - Robert Collier",
+        "The way to get started is to quit talking and begin doing. - Walt Disney",
+        "Don't watch the clock; do what it does. Keep going. - Sam Levenson",
+        "Focus on being productive instead of busy. - Tim Ferriss",
+        "Time is what we want most, but what we use worst. - William Penn",
+        "The successful person makes a habit of doing what the failing person doesn't like to do. - Thomas Edison",
+        "Concentrate all your thoughts upon the work at hand. - Alexander Graham Bell",
+        "It is during our darkest moments that we must focus to see the light. - Aristotle",
+        "The art of being wise is knowing what to overlook. - William James",
+        "Where focus goes, energy flows. - Tony Robbins",
+      ];
+
+      // Display random quote
+      const quoteElement = document.getElementById("motivationalQuote");
+      quoteElement.textContent =
+        quotes[Math.floor(Math.random() * quotes.length)];
+
+      // Update timer and stats
+      function updateDisplay() {
+        if (typeof chrome !== "undefined" && chrome.runtime) {
+          chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
+            if (response) {
+              // Update timer
+              const timerElement = document.getElementById("timer");
+              if (
+                response.state.isRunning &&
+                response.state.currentSession === "focus"
+              ) {
+                const minutes = Math.floor(response.state.timeRemaining / 60);
+                const seconds = response.state.timeRemaining % 60;
+                timerElement.textContent = `${minutes
+                  .toString()
+                  .padStart(2, "0")}:${seconds
+                  .toString()
+                  .padStart(2, "0")} remaining`;
+              } else {
+                timerElement.textContent = "Focus session ended!";
+                // Redirect to a productivity page or show celebration
+                setTimeout(() => {
+                  window.location.href = "about:blank";
+                }, 3000);
+              }
+
+              // Update stats
+              if (response.stats) {
+                document.getElementById("sessionsToday").textContent =
+                  response.stats.sessionsToday;
+                const hours = Math.floor(response.stats.totalFocusTime / 60);
+                const minutes = response.stats.totalFocusTime % 60;
+                document.getElementById(
+                  "totalTime"
+                ).textContent = `${hours}h ${minutes}m`;
+              }
+            }
+          });
+        }
+      }
+
+      // Update every second
+      updateDisplay();
+      setInterval(updateDisplay, 1000);
+    </script>
   </body>
 </html>

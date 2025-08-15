@@ -2,35 +2,257 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>StayOnTrack</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <link rel="stylesheet" href="popup.css" />
+    <style>
+      body {
+        width: 350px;
+        padding: 28px;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(120deg, #00b4db 0%, #0083b0 100%);
+        color: white;
+        margin: 0;
+        font-size: 16px;
+      }
+
+      .container {
+        text-align: center;
+      }
+
+      .timer-display {
+        font-size: 3em;
+        font-weight: bold;
+        margin: 20px 0;
+        font-family: "Courier New", monospace;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .session-type {
+        font-size: 1.2em;
+        margin-bottom: 10px;
+        opacity: 0.9;
+      }
+
+      .controls {
+        margin: 20px 0;
+      }
+
+      .btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 12px 24px;
+        margin: 5px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 1em;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+      }
+
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn.primary {
+        background: rgba(255, 255, 255, 0.9);
+        color: #667eea;
+        font-weight: bold;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+        margin: 20px 0;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 3px;
+        transition: width 1s ease;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+      }
+
+      .settings {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .setting-row {
+        margin: 15px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .setting-label {
+        font-size: 0.9em;
+        opacity: 0.9;
+      }
+
+      .setting-input {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 15px;
+        width: 60px;
+        text-align: center;
+        font-size: 0.9em;
+      }
+
+      .setting-input::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .blocked-sites {
+        margin-top: 15px;
+      }
+
+      .site-input {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 10px;
+        border-radius: 15px;
+        margin-bottom: 10px;
+        font-size: 0.9em;
+      }
+
+      .site-input::placeholder{
+        color: white;
+      }
+
+      .site-list {
+        max-height: 120px;
+        overflow-y: auto;
+        margin: 10px 0;
+        text-align: left;
+      }
+
+      .site-item {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 8px 12px;
+        margin: 5px 0;
+        border-radius: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.85em;
+      }
+
+      .remove-site {
+        background: rgba(255, 0, 0, 0.6);
+        border: none;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 0.8em;
+      }
+
+      .stats {
+        margin-top: 15px;
+        font-size: 0.85em;
+        opacity: 0.9;
+      }
+
+      .blocked-message {
+        background: rgba(255, 0, 0, 0.2);
+        border: 1px solid rgba(255, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 10px;
+        margin: 10px 0;
+        font-size: 0.9em;
+      }
+    </style>
   </head>
   <body>
-    <div class="wrap">
-      <h1>StayOnTrack</h1>
+    <div class="container">
+      <div class="session-type" id="sessionType">Focus Session</div>
+      <div class="timer-display" id="timerDisplay">25:00</div>
 
-      <div id="phase" class="phase idle">Idle</div>
-
-      <div class="time-container">
-        <svg class="progress-ring">
-          <circle class="bg" cx="110" cy="110" r="110" />
-          <circle class="progress" cx="110" cy="110" r="110" />
-        </svg>
-        <div id="time" class="time">25:00</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 100%"></div>
       </div>
 
-      <div class="controls idle" id="controls">
-        <button id="startFocus">🎯 Start Focus</button>
-        <button id="startBreak">☕ Start Break</button>
-        <button id="pause">⏸ Pause</button>
-        <button id="resume">▶️ Resume</button>
-        <button id="reset" class="ghost">🔄 Reset</button>
+      <div class="controls">
+        <button class="btn primary" id="startBtn">Start</button>
+        <button class="btn" id="pauseBtn" disabled>Pause</button>
+        <button class="btn" id="resetBtn">Reset</button>
+        <button class="btn" id="skipBtn" disabled>Skip</button>
       </div>
 
-      <div class="stats">Completed Pomodoros: <span id="pomos">0</span></div>
+      <div id="blockedMessage" class="blocked-message" style="display: none">
+        🚫 Distracting sites are blocked during focus time!
+      </div>
 
-      <a class="options-link" href="options.html" id="openOptions"> ⚙️ Settings </a>
+      <div class="settings">
+        <div class="setting-row">
+          <span class="setting-label">Focus (min):</span>
+          <input
+            type="number"
+            class="setting-input"
+            id="focusTime"
+            value="25"
+            min="1"
+            max="120"
+          />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Break (min):</span>
+          <input
+            type="number"
+            class="setting-input"
+            id="breakTime"
+            value="5"
+            min="1"
+            max="30"
+          />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Long Break (min):</span>
+          <input
+            type="number"
+            class="setting-input"
+            id="longBreakTime"
+            value="15"
+            min="5"
+            max="60"
+          />
+        </div>
+
+        <div class="blocked-sites">
+          <div class="setting-label" style="margin-bottom: 10px">
+            Blocked Sites:
+          </div>
+          <input
+            type="text"
+            class="site-input"
+            id="siteInput"
+            placeholder="Enter website (e.g., facebook.com)"
+          />
+          <button class="btn" id="addSiteBtn">Add Site</button>
+          <div class="site-list" id="siteList"></div>
+        </div>
+
+        <div class="stats">
+          <div>Sessions completed today: <span id="sessionsToday">0</span></div>
+          <div>Total focus time: <span id="totalTime">0h 0m</span></div>
+        </div>
+      </div>
     </div>
 
     <script src="popup.js"></script>
